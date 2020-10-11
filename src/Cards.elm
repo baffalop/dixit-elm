@@ -4,12 +4,14 @@ module Cards exposing
     , Cards
     , DealError(..)
     , SearchError(..)
+    , WithTable
     , clearTable
     , dealIn
     , getList
     , getTable
     , play
     , show
+    , startTable
     )
 
 import Dict exposing (Dict)
@@ -27,9 +29,17 @@ type Cards
     = Cards CardsContents
 
 
-type DealError
+type alias Table =
+    CardList
+
+
+type WithTable
+    = WithTable Table Cards
+
+
+type DealError cards
     = NoCardsInDeck
-    | NeedsShuffling Cards
+    | NeedsShuffling cards
 
 
 type SearchError
@@ -37,17 +47,21 @@ type SearchError
     | CardNotFound
 
 
-type CardError
+type CardError cards
     = SearchError SearchError
-    | DealError DealError
+    | DealError (DealError cards)
 
 
 type alias CardResult =
-    Result CardError Cards
+    Result (CardError Cards) Cards
+
+
+type alias TableResult =
+    Result (CardError WithTable) WithTable
 
 
 type alias DealResult =
-    Result DealError Cards
+    Result (DealError Cards) Cards
 
 
 type alias Id =
@@ -57,7 +71,6 @@ type alias Id =
 type alias CardsContents =
     { deck : CardList
     , discards : CardList
-    , table : CardList
     , hands : Dict Id CardList
     }
 
@@ -76,13 +89,13 @@ getList id (Cards { hands }) =
     Dict.get id hands
 
 
-getTable : Cards -> CardList
-getTable (Cards { table }) =
+getTable : WithTable -> Table
+getTable (WithTable table _) =
     table
 
 
-play : Card -> Cards -> Id -> CardResult
-play card ((Cards contents) as cards) id =
+play : Card -> WithTable -> Id -> TableResult
+play card (WithTable table cards) id =
     getList id cards
         |> Result.fromMaybe (SearchError HandNotFound)
         |> Result.andThen
@@ -90,14 +103,18 @@ play card ((Cards contents) as cards) id =
                 let
                     handMinusCard =
                         List.filter ((/=) card) hand
+
+                    withTable =
+                        WithTable <| card :: table
                 in
                 if hand == handMinusCard then
                     Err <| SearchError CardNotFound
 
                 else
-                    Cards { contents | table = card :: contents.table }
+                    cards
                         |> deal id handMinusCard
-                        |> Result.mapError DealError
+                        |> Result.mapError (mapDealError withTable >> DealError)
+                        |> Result.map withTable
             )
 
 
@@ -119,13 +136,14 @@ dealIn ((Cards contents) as cards) =
         |> Tuple.pair newId
 
 
-clearTable : Cards -> Cards
-clearTable (Cards contents) =
-    Cards
-        { contents
-            | table = []
-            , discards = contents.table ++ contents.discards
-        }
+startTable : Cards -> WithTable
+startTable =
+    WithTable []
+
+
+clearTable : WithTable -> Cards
+clearTable (WithTable table (Cards contents)) =
+    Cards { contents | discards = table ++ contents.discards }
 
 
 deal : Id -> CardList -> Cards -> DealResult
@@ -158,3 +176,13 @@ makeId (Cards contents) =
         |> List.maximum
         |> Maybe.map ((+) 1)
         |> Maybe.withDefault 0
+
+
+mapDealError : (a -> b) -> DealError a -> DealError b
+mapDealError mapper error =
+    case error of
+        NoCardsInDeck ->
+            NoCardsInDeck
+
+        NeedsShuffling contents ->
+            NeedsShuffling <| mapper contents
