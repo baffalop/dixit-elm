@@ -3,9 +3,7 @@ module Cards exposing
     , CardError(..)
     , CardList
     , Cards
-    , DealError(..)
     , Id
-    , SearchError(..)
     , Table
     , WithTable
     , clearTable
@@ -43,30 +41,14 @@ type WithTable
     = WithTable Table Cards
 
 
-type DealError cards
-    = NoCardsInDeck
-
-
-type SearchError
+type CardError
     = HandNotFound
     | CardNotFound
-
-
-type CardError cards
-    = SearchError SearchError
-    | DealError (DealError cards)
+    | NoCardsInDeck
 
 
 type alias CardResult =
-    Result (CardError Cards) Cards
-
-
-type alias TableResult =
-    Result (CardError WithTable) WithTable
-
-
-type alias DealResult =
-    Result (DealError Cards) Cards
+    Result CardError WithTable
 
 
 type alias Id =
@@ -100,10 +82,10 @@ getTable (WithTable table _) =
     table
 
 
-play : Card -> WithTable -> Id -> TableResult
+play : Card -> WithTable -> Id -> CardResult
 play card (WithTable table cards) id =
     getList id cards
-        |> Result.fromMaybe (SearchError HandNotFound)
+        |> Result.fromMaybe HandNotFound
         |> Result.andThen
             (\hand ->
                 let
@@ -114,12 +96,12 @@ play card (WithTable table cards) id =
                         WithTable <| card :: table
                 in
                 if hand == handMinusCard then
-                    Err <| SearchError CardNotFound
+                    Err CardNotFound
 
                 else
                     cards
                         |> deal id handMinusCard
-                        |> Result.mapError (mapDealError withTable >> DealError)
+                        |> Result.fromMaybe NoCardsInDeck
                         |> Result.map withTable
             )
 
@@ -152,11 +134,11 @@ clearTable (WithTable table (Cards contents)) =
     Cards { contents | discards = table ++ contents.discards }
 
 
-deal : Id -> CardList -> Cards -> DealResult
+deal : Id -> CardList -> Cards -> Maybe Cards
 deal id hand (Cards contents) =
     case contents.deck of
         [] ->
-            Err NoCardsInDeck
+            Nothing
 
         card :: restOfDeck ->
             { contents
@@ -165,7 +147,7 @@ deal id hand (Cards contents) =
             }
                 |> Cards
                 |> shuffleIfNecessary
-                |> Ok
+                |> Just
 
 
 shuffleIfNecessary : Cards -> Cards
@@ -203,10 +185,3 @@ makeId (Cards contents) =
         |> List.maximum
         |> Maybe.map ((+) 1)
         |> Maybe.withDefault 0
-
-
-mapDealError : (a -> b) -> DealError a -> DealError b
-mapDealError mapper error =
-    case error of
-        NoCardsInDeck ->
-            NoCardsInDeck
