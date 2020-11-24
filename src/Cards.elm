@@ -17,7 +17,10 @@ module Cards exposing
     , startTable
     )
 
+import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
+import Random
+import Random.List
 
 
 type Card
@@ -42,7 +45,6 @@ type WithTable
 
 type DealError cards
     = NoCardsInDeck
-    | NeedsShuffling cards
 
 
 type SearchError
@@ -75,6 +77,7 @@ type alias CardsContents =
     { deck : CardList
     , discards : CardList
     , hands : Dict Id CardList
+    , seed : Random.Seed
     }
 
 
@@ -121,7 +124,7 @@ play card (WithTable table cards) id =
             )
 
 
-dealIn : Cards -> ( Id, DealResult )
+dealIn : Cards -> ( Id, Cards )
 dealIn ((Cards contents) as cards) =
     let
         newId =
@@ -135,7 +138,7 @@ dealIn ((Cards contents) as cards) =
         , deck = List.drop sizeOfHand contents.deck
     }
         |> Cards
-        |> needShuffling
+        |> shuffleIfNecessary
         |> Tuple.pair newId
 
 
@@ -161,16 +164,37 @@ deal id hand (Cards contents) =
                 , deck = restOfDeck
             }
                 |> Cards
-                |> needShuffling
+                |> shuffleIfNecessary
+                |> Ok
 
 
-needShuffling : Cards -> DealResult
-needShuffling ((Cards { deck }) as cards) =
-    if List.length deck < sizeOfHand then
-        Err <| NeedsShuffling cards
+shuffleIfNecessary : Cards -> Cards
+shuffleIfNecessary ((Cards { deck }) as cards) =
+    if List.length deck > sizeOfHand then
+        shuffleDiscardsIntoDeck cards
 
     else
-        Ok cards
+        cards
+
+
+shuffleDiscardsIntoDeck : Cards -> Cards
+shuffleDiscardsIntoDeck (Cards ({ deck, discards, seed } as cards)) =
+    let
+        -- don't include recent discards in the shuffle, to avoid dealing them again too soon
+        ( recentDiscards, laterDiscards ) =
+            ( List.take sizeOfHand discards, List.drop sizeOfHand discards )
+
+        ( shuffled, newSeed ) =
+            laterDiscards
+                |> Random.List.shuffle
+                |> flip Random.step seed
+    in
+    Cards
+        { cards
+            | discards = List.take sizeOfHand discards
+            , deck = deck ++ shuffled
+            , seed = newSeed
+        }
 
 
 makeId : Cards -> Id
@@ -186,6 +210,3 @@ mapDealError mapper error =
     case error of
         NoCardsInDeck ->
             NoCardsInDeck
-
-        NeedsShuffling contents ->
-            NeedsShuffling <| mapper contents
