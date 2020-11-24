@@ -1,9 +1,12 @@
 module Cards exposing
     ( Card
     , CardError(..)
+    , CardList
     , Cards
     , DealError(..)
+    , Id
     , SearchError(..)
+    , Table
     , WithTable
     , clearTable
     , dealIn
