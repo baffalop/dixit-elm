@@ -175,11 +175,14 @@ shuffleIfNecessary ((Cards { deck }) as cards) =
 
 
 shuffleDiscardsIntoDeck : Cards -> Cards
-shuffleDiscardsIntoDeck (Cards ({ deck, discards, seed } as cards)) =
+shuffleDiscardsIntoDeck (Cards ({ deck, discards, hands, seed } as cards)) =
     let
+        discardCutoff =
+            Dict.size hands * 2
+
         -- don't include recent discards in the shuffle, to avoid dealing them again too soon
         ( recentDiscards, laterDiscards ) =
-            ( List.take sizeOfHand discards, List.drop sizeOfHand discards )
+            ( List.take discardCutoff discards, List.drop discardCutoff discards )
 
         ( shuffled, newSeed ) =
             laterDiscards
