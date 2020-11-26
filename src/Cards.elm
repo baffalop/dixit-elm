@@ -67,11 +67,11 @@ type alias CardsContents =
 new : Random.Seed -> Cards
 new seed =
     let
-        ( shuffledDeck, newSeed ) =
+        ( deck, newSeed ) =
             shuffleNewDeck seed
     in
     Cards
-        { deck = shuffledDeck
+        { deck = deck
         , discards = []
         , hands = Dict.empty
         , seed = newSeed
