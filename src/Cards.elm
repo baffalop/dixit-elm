@@ -10,6 +10,7 @@ module Cards exposing
     , dealIn
     , getList
     , getTable
+    , new
     , play
     , show
     , startTable
@@ -61,6 +62,20 @@ type alias CardsContents =
     , hands : Dict Id CardList
     , seed : Random.Seed
     }
+
+
+new : Random.Seed -> Cards
+new seed =
+    let
+        ( shuffledDeck, newSeed ) =
+            shuffleNewDeck seed
+    in
+    Cards
+        { deck = shuffledDeck
+        , discards = []
+        , hands = Dict.empty
+        , seed = newSeed
+        }
 
 
 sizeOfHand =
@@ -173,7 +188,7 @@ shuffleDiscardsIntoDeck (Cards ({ deck, discards, seed } as cards)) =
     in
     Cards
         { cards
-            | discards = List.take sizeOfHand discards
+            | discards = recentDiscards
             , deck = deck ++ shuffled
             , seed = newSeed
         }
@@ -185,3 +200,11 @@ makeId (Cards contents) =
         |> List.maximum
         |> Maybe.map ((+) 1)
         |> Maybe.withDefault 0
+
+
+shuffleNewDeck : Random.Seed -> ( CardList, Random.Seed )
+shuffleNewDeck seed =
+    List.range 1 100
+        |> List.map (String.fromInt >> String.padLeft 5 '0' >> Card)
+        |> Random.List.shuffle
+        |> flip Random.step seed
