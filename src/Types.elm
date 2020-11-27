@@ -1,7 +1,16 @@
-module Types exposing (..)
+module Types exposing
+    ( BackendModel
+    , BackendMsg
+    , FrontendModel
+    , FrontendMsg
+    , ToBackend
+    , ToFrontend
+    )
 
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
+import Cards exposing (Cards, Table)
+import Dict exposing (Dict)
 import Url exposing (Url)
 
 
@@ -12,8 +21,52 @@ type alias FrontendModel =
 
 
 type alias BackendModel =
-    { message : String
+    { games : Dict String Game
     }
+
+
+type Game
+    = GameNotStarted
+        { players : Players
+        , cards : Cards
+        }
+    | GameInProgress GameState
+
+
+type alias GameState =
+    { players : Players
+    , turn : PlayerName
+    , stage : Stage
+    }
+
+
+type alias Players =
+    Dict PlayerName Player
+
+
+type alias PlayerName =
+    String
+
+
+type alias Player =
+    { score : Int
+    , handId : Cards.Id
+    }
+
+
+type Stage
+    = ThinkingOfClue Cards
+    | CollectingCards Cards.WithTable
+    | GuessingCard Cards Table
+    | Scoring
+        { cards : Cards
+        , table : Table
+        , scores : Scores
+        }
+
+
+type alias Scores =
+    {}
 
 
 type FrontendMsg
