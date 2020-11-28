@@ -1,11 +1,4 @@
-module Types exposing
-    ( BackendModel
-    , BackendMsg(..)
-    , FrontendModel
-    , FrontendMsg(..)
-    , ToBackend(..)
-    , ToFrontend(..)
-    )
+module Types exposing (..)
 
 import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
