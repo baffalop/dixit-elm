@@ -1,10 +1,10 @@
 module Types exposing
     ( BackendModel
-    , BackendMsg
+    , BackendMsg(..)
     , FrontendModel
-    , FrontendMsg
-    , ToBackend
-    , ToFrontend
+    , FrontendMsg(..)
+    , ToBackend(..)
+    , ToFrontend(..)
     )
 
 import Browser exposing (UrlRequest)
@@ -24,6 +24,24 @@ type alias FrontendModel =
 type alias BackendModel =
     { games : Repo Game
     }
+
+
+type FrontendMsg
+    = UrlClicked UrlRequest
+    | UrlChanged Url
+    | NoOpFrontendMsg
+
+
+type ToBackend
+    = NoOpToBackend
+
+
+type BackendMsg
+    = NoOpBackendMsg
+
+
+type ToFrontend
+    = NoOpToFrontend
 
 
 type Game
@@ -69,21 +87,3 @@ type Stage
 
 type alias Scores =
     {}
-
-
-type FrontendMsg
-    = UrlClicked UrlRequest
-    | UrlChanged Url
-    | NoOpFrontendMsg
-
-
-type ToBackend
-    = NoOpToBackend
-
-
-type BackendMsg
-    = NoOpBackendMsg
-
-
-type ToFrontend
-    = NoOpToFrontend

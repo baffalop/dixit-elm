@@ -1,12 +1,10 @@
-module Backend exposing (..)
+module Backend exposing (app)
 
-import Html
+import Dict exposing (Dict)
+import Helpers exposing (withNoCmd)
 import Lamdera exposing (ClientId, SessionId)
+import Repo exposing (Id, Repo)
 import Types exposing (..)
-
-
-type alias Model =
-    BackendModel
 
 
 app =
@@ -18,21 +16,21 @@ app =
         }
 
 
-init : ( Model, Cmd BackendMsg )
+init : ( BackendModel, Cmd msg )
 init =
-    ( { message = "Hello!" }
-    , Cmd.none
-    )
+    { games = Repo.empty
+    }
+        |> withNoCmd
 
 
-update : BackendMsg -> Model -> ( Model, Cmd BackendMsg )
+update : BackendMsg -> BackendModel -> ( BackendModel, Cmd BackendMsg )
 update msg model =
     case msg of
         NoOpBackendMsg ->
             ( model, Cmd.none )
 
 
-updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
+updateFromFrontend : SessionId -> ClientId -> ToBackend -> BackendModel -> ( BackendModel, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg model =
     case msg of
         NoOpToBackend ->
