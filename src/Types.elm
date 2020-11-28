@@ -70,7 +70,7 @@ type alias PlayerName =
 type alias Player =
     { name : PlayerName
     , score : Int
-    , handId : Cards.Id
+    , handId : Cards.HandId
     }
 
 

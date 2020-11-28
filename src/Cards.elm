@@ -3,12 +3,12 @@ module Cards exposing
     , CardError(..)
     , CardList
     , Cards
-    , Id
+    , HandId
     , Table
     , WithTable
     , clearTable
     , dealIn
-    , getList
+    , getHand
     , getTable
     , new
     , play
@@ -20,10 +20,15 @@ import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
 import Random
 import Random.List
+import Repo exposing (Repo)
 
 
 type Card
     = Card String
+
+
+type alias HandId =
+    Repo.Id CardList
 
 
 type alias CardList =
@@ -52,14 +57,10 @@ type alias CardResult =
     Result CardError WithTable
 
 
-type alias Id =
-    Int
-
-
 type alias CardsContents =
     { deck : CardList
     , discards : CardList
-    , hands : Dict Id CardList
+    , hands : Repo CardList
     , seed : Random.Seed
     }
 
@@ -73,11 +74,12 @@ new seed =
     Cards
         { deck = deck
         , discards = []
-        , hands = Dict.empty
+        , hands = Repo.empty
         , seed = newSeed
         }
 
 
+sizeOfHand : Int
 sizeOfHand =
     7
 
@@ -87,9 +89,9 @@ show (Card name) =
     name
 
 
-getList : Id -> Cards -> Maybe CardList
-getList id (Cards { hands }) =
-    Dict.get id hands
+getHand : HandId -> Cards -> Maybe CardList
+getHand id (Cards { hands }) =
+    Repo.get id hands
 
 
 getTable : WithTable -> Table
@@ -97,9 +99,9 @@ getTable (WithTable table _) =
     table
 
 
-play : Card -> WithTable -> Id -> CardResult
+play : Card -> WithTable -> HandId -> CardResult
 play card (WithTable table cards) id =
-    getList id cards
+    getHand id cards
         |> Result.fromMaybe HandNotFound
         |> Result.andThen
             (\hand ->
@@ -121,17 +123,17 @@ play card (WithTable table cards) id =
             )
 
 
-dealIn : Cards -> ( Id, Cards )
-dealIn ((Cards contents) as cards) =
+dealIn : Cards -> ( HandId, Cards )
+dealIn ((Cards ({ deck, hands } as contents)) as cards) =
     let
-        newId =
-            makeId cards
-
         newHand =
-            List.take sizeOfHand contents.deck
+            List.take sizeOfHand deck
+
+        ( newId, newHands ) =
+            Repo.add newHand hands
     in
     { contents
-        | hands = Dict.insert newId newHand contents.hands
+        | hands = newHands
         , deck = List.drop sizeOfHand contents.deck
     }
         |> Cards
@@ -149,15 +151,15 @@ clearTable (WithTable table (Cards contents)) =
     Cards { contents | discards = table ++ contents.discards }
 
 
-deal : Id -> CardList -> Cards -> Maybe Cards
-deal id hand (Cards contents) =
-    case contents.deck of
+deal : HandId -> CardList -> Cards -> Maybe Cards
+deal id hand (Cards ({ deck, hands } as contents)) =
+    case deck of
         [] ->
             Nothing
 
         card :: restOfDeck ->
             { contents
-                | hands = Dict.insert id (card :: hand) contents.hands
+                | hands = Repo.insert id (card :: hand) hands
                 , deck = restOfDeck
             }
                 |> Cards
@@ -178,7 +180,7 @@ shuffleDiscardsIntoDeck : Cards -> Cards
 shuffleDiscardsIntoDeck (Cards ({ deck, discards, hands, seed } as cards)) =
     let
         discardCutoff =
-            Dict.size hands * 2
+            Repo.size hands * 2
 
         -- don't include recent discards in the shuffle, to avoid dealing them again too soon
         ( recentDiscards, laterDiscards ) =
@@ -195,14 +197,6 @@ shuffleDiscardsIntoDeck (Cards ({ deck, discards, hands, seed } as cards)) =
             , deck = deck ++ shuffled
             , seed = newSeed
         }
-
-
-makeId : Cards -> Id
-makeId (Cards contents) =
-    Dict.keys contents.hands
-        |> List.maximum
-        |> Maybe.map ((+) 1)
-        |> Maybe.withDefault 0
 
 
 shuffleNewDeck : Random.Seed -> ( CardList, Random.Seed )

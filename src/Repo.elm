@@ -1,17 +1,27 @@
-module Repo exposing (Id, Repo, empty, get, insert)
+module Repo exposing
+    ( Id
+    , Repo
+    , add
+    , empty
+    , get
+    , insert
+    , size
+    , update
+    )
 
 import Dict exposing (Dict)
 
 
-{-| Use `repoOf` phantom type to mark the type of entity
-contained in the Repo this Id relates to
--}
+type alias Key =
+    Int
+
+
 type Id entity
-    = Id Int
+    = Id Key
 
 
 type Repo entity
-    = Repo (Dict Int entity)
+    = Repo (Dict Key entity)
 
 
 empty : Repo a
@@ -20,16 +30,49 @@ empty =
 
 
 get : Id a -> Repo a -> Maybe a
-get (Id id) (Repo repo) =
-    Dict.get id repo
+get id (Repo repo) =
+    Dict.get (toKey id) repo
 
 
-insert : a -> Repo a -> ( Id a, Repo a )
-insert x (Repo repo) =
+add : a -> Repo a -> ( Id a, Repo a )
+add x repo =
     let
+        dict =
+            toDict repo
+
         newId =
-            Dict.size repo
+            Dict.size dict
     in
     ( Id newId
-    , Repo <| Dict.insert newId x repo
+    , Repo <| Dict.insert newId x dict
     )
+
+
+insert : Id a -> a -> Repo a -> Repo a
+insert id x repo =
+    Dict.insert (toKey id) x (toDict repo)
+        |> Repo
+
+
+update : Id a -> (a -> a) -> Repo a -> Repo a
+update id f repo =
+    Dict.update
+        (toKey id)
+        (Maybe.map f)
+        (toDict repo)
+        |> Repo
+
+
+size : Repo a -> Int
+size =
+    toDict >> Dict.size
+
+
+toKey : Id a -> Key
+toKey (Id key) =
+    key
+
+
+toDict : Repo a -> Dict Key a
+toDict (Repo dict) =
+    dict
