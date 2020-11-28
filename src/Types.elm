@@ -11,6 +11,7 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import Cards exposing (Cards, Table)
 import Dict exposing (Dict)
+import Repo exposing (Id, Repo)
 import Url exposing (Url)
 
 
@@ -21,7 +22,7 @@ type alias FrontendModel =
 
 
 type alias BackendModel =
-    { games : Dict String Game
+    { games : Repo Game
     }
 
 
@@ -41,7 +42,7 @@ type alias GameState =
 
 
 type alias Players =
-    Dict PlayerName Player
+    Repo Player
 
 
 type alias PlayerName =
@@ -49,7 +50,8 @@ type alias PlayerName =
 
 
 type alias Player =
-    { score : Int
+    { name : PlayerName
+    , score : Int
     , handId : Cards.Id
     }
 
