@@ -103,6 +103,16 @@ getTable (WithTable table _) =
     table
 
 
+startTable : Cards -> WithTable
+startTable =
+    WithTable []
+
+
+clearTable : WithTable -> Cards
+clearTable (WithTable table (Cards contents)) =
+    Cards { contents | discards = table ++ contents.discards }
+
+
 play : Card -> WithTable -> HandId -> WithTableResult
 play card (WithTable table ((Cards contents) as cards)) id =
     getHand id cards
@@ -124,32 +134,27 @@ play card (WithTable table ((Cards contents) as cards)) id =
             )
 
 
-dealIn : Cards -> ( HandId, Cards )
+dealIn : Cards -> Maybe ( HandId, Cards )
 dealIn ((Cards ({ deck, hands } as contents)) as cards) =
     let
-        newHand =
-            List.take sizeOfHand deck
+        ( newHand, newDeck ) =
+            ( List.take sizeOfHand deck, List.drop sizeOfHand contents.deck )
 
         ( newId, newHands ) =
             Repo.add newHand hands
     in
-    { contents
-        | hands = newHands
-        , deck = List.drop sizeOfHand contents.deck
-    }
-        |> Cards
-        |> shuffleIfNecessary
-        |> Tuple.pair newId
+    if List.length newHand /= sizeOfHand then
+        Nothing
 
-
-startTable : Cards -> WithTable
-startTable =
-    WithTable []
-
-
-clearTable : WithTable -> Cards
-clearTable (WithTable table (Cards contents)) =
-    Cards { contents | discards = table ++ contents.discards }
+    else
+        { contents
+            | hands = newHands
+            , deck = newDeck
+        }
+            |> Cards
+            |> shuffleIfNecessary
+            |> Tuple.pair newId
+            |> Just
 
 
 deal : HandId -> Cards -> CardResult
