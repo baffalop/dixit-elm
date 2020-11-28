@@ -167,7 +167,7 @@ deal id hand (Cards contents) =
 
 shuffleIfNecessary : Cards -> Cards
 shuffleIfNecessary ((Cards { deck }) as cards) =
-    if List.length deck > sizeOfHand then
+    if List.length deck < sizeOfHand then
         shuffleDiscardsIntoDeck cards
 
     else
