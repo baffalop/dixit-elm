@@ -54,6 +54,10 @@ type CardError
 
 
 type alias CardResult =
+    Result CardError Cards
+
+
+type alias WithTableResult =
     Result CardError WithTable
 
 
@@ -99,27 +103,24 @@ getTable (WithTable table _) =
     table
 
 
-play : Card -> WithTable -> HandId -> CardResult
-play card (WithTable table cards) id =
+play : Card -> WithTable -> HandId -> WithTableResult
+play card (WithTable table ((Cards contents) as cards)) id =
     getHand id cards
         |> Result.fromMaybe HandNotFound
         |> Result.andThen
             (\hand ->
                 let
-                    handMinusCard =
-                        List.filter ((/=) card) hand
-
-                    withTable =
-                        WithTable <| card :: table
+                    handsMinusCard =
+                        Repo.update id (List.filter ((/=) card)) contents.hands
                 in
-                if hand == handMinusCard then
+                if not <| List.member card hand then
                     Err CardNotFound
 
                 else
-                    cards
-                        |> deal id handMinusCard
-                        |> Result.fromMaybe NoCardsInDeck
-                        |> Result.map withTable
+                    { contents | hands = handsMinusCard }
+                        |> Cards
+                        |> deal id
+                        |> Result.map (WithTable <| card :: table)
             )
 
 
@@ -151,20 +152,23 @@ clearTable (WithTable table (Cards contents)) =
     Cards { contents | discards = table ++ contents.discards }
 
 
-deal : HandId -> CardList -> Cards -> Maybe Cards
-deal id hand (Cards ({ deck, hands } as contents)) =
-    case deck of
-        [] ->
-            Nothing
+deal : HandId -> Cards -> CardResult
+deal id (Cards ({ deck, hands } as contents)) =
+    case ( Repo.get id hands, deck ) of
+        ( Nothing, _ ) ->
+            Err HandNotFound
 
-        card :: restOfDeck ->
+        ( _, [] ) ->
+            Err NoCardsInDeck
+
+        ( Just hand, card :: restOfDeck ) ->
             { contents
-                | hands = Repo.insert id (card :: hand) hands
+                | hands = Repo.replace id (card :: hand) hands
                 , deck = restOfDeck
             }
                 |> Cards
                 |> shuffleIfNecessary
-                |> Just
+                |> Ok
 
 
 shuffleIfNecessary : Cards -> Cards

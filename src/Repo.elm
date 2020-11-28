@@ -4,11 +4,12 @@ module Repo exposing
     , add
     , empty
     , get
-    , insert
+    , replace
     , size
     , update
     )
 
+import Basics.Extra exposing (flip)
 import Dict exposing (Dict)
 
 
@@ -48,9 +49,12 @@ add x repo =
     )
 
 
-insert : Id a -> a -> Repo a -> Repo a
-insert id x repo =
-    Dict.insert (toKey id) x (toDict repo)
+replace : Id a -> a -> Repo a -> Repo a
+replace id x repo =
+    Dict.update
+        (toKey id)
+        (Maybe.map <| always x)
+        (toDict repo)
         |> Repo
 
 
