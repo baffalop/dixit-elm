@@ -4,6 +4,7 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import Cards exposing (Cards, Table)
 import Dict exposing (Dict)
+import Random
 import Repo exposing (Id, Repo)
 import Url exposing (Url)
 
@@ -16,6 +17,7 @@ type alias FrontendModel =
 
 type alias BackendModel =
     { games : Repo Game
+    , waitingRoom : Maybe WaitingRoom
     }
 
 
@@ -31,23 +33,22 @@ type ToBackend
 
 type BackendMsg
     = NoOpBackendMsg
+    | GotSeedForWaitingRoom Random.Seed
 
 
 type ToFrontend
     = NoOpToFrontend
 
 
-type Game
-    = GameNotStarted
-        { players : Players
-        , cards : Cards
-        }
-    | GameInProgress GameState
-
-
-type alias GameState =
+type alias WaitingRoom =
     { players : Players
-    , turn : PlayerName
+    , cards : Cards
+    }
+
+
+type alias Game =
+    { players : Players
+    , turn : Id Player
     , stage : Stage
     }
 

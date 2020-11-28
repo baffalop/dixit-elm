@@ -1,6 +1,13 @@
 module Helpers exposing (..)
 
+import Basics.Extra exposing (flip)
+
+
+withCmd : Cmd msg -> a -> ( a, Cmd msg )
+withCmd =
+    flip Tuple.pair
+
 
 withNoCmd : a -> ( a, Cmd msg )
-withNoCmd x =
-    ( x, Cmd.none )
+withNoCmd =
+    withCmd Cmd.none
