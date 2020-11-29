@@ -1,9 +1,10 @@
 module Backend exposing (app)
 
+import Basics.Extra exposing (flip)
 import Cards exposing (Cards)
 import Dict exposing (Dict)
 import Helpers exposing (withCmd, withNoCmd)
-import Lamdera exposing (ClientId, SessionId)
+import Lamdera exposing (ClientId, SessionId, sendToFrontend)
 import Random
 import Repo exposing (Id, Repo)
 import Types exposing (..)
@@ -20,15 +21,16 @@ app =
 
 init : ( BackendModel, Cmd BackendMsg )
 init =
-    { games = Repo.empty
-    , waitingRoom = Nothing
-    }
-        |> withCmd (generateSeed GotSeedForWaitingRoom)
+    ( { games = Repo.empty
+      , waitingRoom = Nothing
+      }
+    , generateSeed GotSeedForWaitingRoom
+    )
 
 
 initWaitingRoom : Random.Seed -> WaitingRoom
 initWaitingRoom seed =
-    { players = Repo.empty
+    { players = Dict.empty
     , cards = Cards.new seed
     }
 
@@ -57,6 +59,63 @@ updateFromFrontend sessionId clientId msg model =
     case msg of
         NoOpToBackend ->
             noOp
+
+        NewPlayerJoined name ->
+            case
+                model.waitingRoom
+                    |> Result.fromMaybe NoWaitingRoom
+                    |> Result.andThen (addNewPlayer name clientId)
+            of
+                Ok newWaitingRoom ->
+                    -- todo: check waiting room capacity
+                    ( { model | waitingRoom = Just newWaitingRoom }
+                    , broadcastToWaitingRoom newWaitingRoom <| PlayerHasJoined name
+                    )
+
+                Err joinError ->
+                    ( model
+                    , sendToFrontend clientId <| PlayerCouldNotJoin joinError
+                    )
+
+
+addNewPlayer : PlayerName -> ClientId -> WaitingRoom -> Result PlayerJoinError WaitingRoom
+addNewPlayer name clientId ({ players, cards } as waitingRoom) =
+    if Dict.member name players then
+        Err DuplicatePlayerName
+
+    else
+        makePlayer name clientId cards
+            |> Result.fromMaybe CouldNotDealIn
+            |> Result.map
+                (\( newPlayer, newCards ) ->
+                    { waitingRoom
+                        | players = Dict.insert name newPlayer players
+                        , cards = newCards
+                    }
+                )
+
+
+makePlayer : PlayerName -> ClientId -> Cards -> Maybe ( Player, Cards )
+makePlayer name clientId cards =
+    Cards.dealIn cards
+        |> Maybe.map
+            (Tuple.mapFirst
+                (\handId ->
+                    { name = name
+                    , clientId = clientId
+                    , score = 0
+                    , handId = handId
+                    }
+                )
+            )
+
+
+broadcastToWaitingRoom : WaitingRoom -> ToFrontend -> Cmd msg
+broadcastToWaitingRoom { players } msg =
+    players
+        |> Dict.values
+        |> List.map (.clientId >> flip sendToFrontend msg)
+        |> Cmd.batch
 
 
 

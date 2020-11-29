@@ -4,6 +4,7 @@ import Browser exposing (UrlRequest)
 import Browser.Navigation exposing (Key)
 import Cards exposing (Cards, Table)
 import Dict exposing (Dict)
+import Lamdera exposing (ClientId, SessionId)
 import Random
 import Repo exposing (Id, Repo)
 import Url exposing (Url)
@@ -29,6 +30,7 @@ type FrontendMsg
 
 type ToBackend
     = NoOpToBackend
+    | NewPlayerJoined PlayerName
 
 
 type BackendMsg
@@ -38,6 +40,8 @@ type BackendMsg
 
 type ToFrontend
     = NoOpToFrontend
+    | PlayerCouldNotJoin PlayerJoinError
+    | PlayerHasJoined PlayerName
 
 
 type alias WaitingRoom =
@@ -54,7 +58,7 @@ type alias Game =
 
 
 type alias Players =
-    Repo Player
+    Dict PlayerName Player
 
 
 type alias PlayerName =
@@ -63,6 +67,7 @@ type alias PlayerName =
 
 type alias Player =
     { name : PlayerName
+    , clientId : ClientId
     , score : Int
     , handId : Cards.HandId
     }
@@ -81,3 +86,9 @@ type Stage
 
 type alias Scores =
     {}
+
+
+type PlayerJoinError
+    = DuplicatePlayerName
+    | NoWaitingRoom
+    | CouldNotDealIn
