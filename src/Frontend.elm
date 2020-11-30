@@ -2,10 +2,11 @@ module Frontend exposing (..)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
+import Css
 import Helpers exposing (withNoCmd)
-import Html exposing (Html)
-import Html.Attributes as HA
-import Html.Events as HE
+import Html.Styled as Html exposing (Html)
+import Html.Styled.Attributes as HA
+import Html.Styled.Events as HE
 import Json.Decode as Decode
 import Lamdera
 import Types exposing (..)
@@ -90,17 +91,32 @@ updateFromBackend msg model =
 
 view : FrontendModel -> Browser.Document FrontendMsg
 view { page } =
+    let
+        content =
+            case page of
+                Login data ->
+                    viewLogin data
+
+                GameLoading data ->
+                    viewLoading data
+
+                InWaitingRoom data ->
+                    viewWaitingRoom data
+    in
     { title = "Dixit"
     , body =
-        case page of
-            Login data ->
-                viewLogin data
-
-            GameLoading data ->
-                viewLoading data
-
-            InWaitingRoom data ->
-                viewWaitingRoom data
+        content
+            |> Html.div
+                [ HA.css
+                    [ Css.displayFlex
+                    , Css.flexDirection Css.column
+                    , Css.alignItems Css.center
+                    , Css.width <| Css.pct 100
+                    , Css.margin <| Css.px 30
+                    ]
+                ]
+            |> Html.toUnstyled
+            |> List.singleton
     }
 
 
@@ -115,7 +131,7 @@ viewLogin { name } =
             , HA.required True
             , HE.onInput LoginNameChanged
             ]
-            [ Html.text "Please enter your name" ]
+            []
         ]
     ]
         |> List.map (Html.map LoginMsg)
