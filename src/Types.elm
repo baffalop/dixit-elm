@@ -1,7 +1,7 @@
 module Types exposing (..)
 
 import Browser exposing (UrlRequest)
-import Browser.Navigation exposing (Key)
+import Browser.Navigation as Nav exposing (Key)
 import Cards exposing (Cards, Table)
 import Dict exposing (Dict)
 import Lamdera exposing (ClientId, SessionId)
@@ -11,8 +11,26 @@ import Url exposing (Url)
 
 
 type alias FrontendModel =
-    { key : Key
-    , message : String
+    { url : Url.Url
+    , key : Nav.Key
+    , model : FrontendState
+    }
+
+
+type FrontendState
+    = LoggingIn
+        { name : String
+        }
+    | LoadingLogin
+        { name : String
+        }
+    | InWaitingRoom WaitingRoomData
+
+
+type alias WaitingRoomData =
+    { name : PlayerName
+    , cards : Cards.CardList
+    , players : List PlayerName
     }
 
 
@@ -23,9 +41,10 @@ type alias BackendModel =
 
 
 type FrontendMsg
-    = UrlClicked UrlRequest
+    = NoOpFrontendMsg
+    | UrlClicked UrlRequest
     | UrlChanged Url
-    | NoOpFrontendMsg
+    | LoginSubmitted
 
 
 type ToBackend

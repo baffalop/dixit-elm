@@ -2,15 +2,13 @@ module Frontend exposing (..)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Html
-import Html.Attributes as Attr
+import Html as H exposing (Html)
+import Html.Attributes as HA
+import Html.Events as HE
+import Json.Decode as Decode
 import Lamdera
 import Types exposing (..)
 import Url
-
-
-type alias Model =
-    FrontendModel
 
 
 app =
@@ -25,52 +23,96 @@ app =
         }
 
 
-init : Url.Url -> Nav.Key -> ( Model, Cmd FrontendMsg )
+init : Url.Url -> Nav.Key -> ( FrontendModel, Cmd FrontendMsg )
 init url key =
-    ( { key = key
-      , message = "Welcome to yooooo! You're looking at the auto-generated base implementation. Check out src/Frontend.elm to start coding!"
+    ( { url = url
+      , key = key
+      , model =
+            LoggingIn
+                { name = ""
+                }
       }
     , Cmd.none
     )
 
 
-update : FrontendMsg -> Model -> ( Model, Cmd FrontendMsg )
-update msg model =
-    case msg of
-        UrlClicked urlRequest ->
-            case urlRequest of
-                Internal url ->
-                    ( model
-                    , Cmd.batch [ Nav.pushUrl model.key (Url.toString url) ]
-                    )
-
-                External url ->
-                    ( model
-                    , Nav.load url
-                    )
-
-        UrlChanged url ->
+update : FrontendMsg -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
+update msg ({ model } as everything) =
+    let
+        noOp =
             ( model, Cmd.none )
+    in
+    Tuple.mapFirst (FrontendModel everything.url everything.key) <|
+        case msg of
+            UrlClicked urlRequest ->
+                case urlRequest of
+                    Internal url ->
+                        ( model
+                        , Cmd.batch [ Nav.pushUrl everything.key (Url.toString url) ]
+                        )
 
-        NoOpFrontendMsg ->
-            ( model, Cmd.none )
+                    External url ->
+                        ( model
+                        , Nav.load url
+                        )
+
+            UrlChanged url ->
+                noOp
+
+            NoOpFrontendMsg ->
+                noOp
+
+            LoginSubmitted ->
+                case model of
+                    LoggingIn data ->
+                        ( LoadingLogin data
+                        , Cmd.none
+                        )
+
+                    _ ->
+                        noOp
 
 
-updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
+updateFromBackend : ToFrontend -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
 updateFromBackend msg model =
     ( model, Cmd.none )
 
 
-view model =
-    { title = ""
+view : FrontendModel -> Browser.Document FrontendMsg
+view { model } =
+    { title = "Dixit"
     , body =
-        [ Html.div [ Attr.style "text-align" "center", Attr.style "padding-top" "40px" ]
-            [ Html.img [ Attr.src "https://lamdera.app/lamdera-logo-black.png", Attr.width 150 ] []
-            , Html.div
-                [ Attr.style "font-family" "sans-serif"
-                , Attr.style "padding-top" "40px"
-                ]
-                [ Html.text model.message ]
-            ]
-        ]
+        case model of
+            LoggingIn { name } ->
+                viewLogin name
+
+            LoadingLogin _ ->
+                viewLoading
+
+            InWaitingRoom data ->
+                viewWaitingRoom data
     }
+
+
+viewLogin : String -> List (Html FrontendMsg)
+viewLogin name =
+    [ H.h1 [] [ H.text "Log In" ]
+    , H.form
+        [ HE.preventDefaultOn "submit" <| Decode.succeed ( LoginSubmitted, True )
+        ]
+        [ H.input
+            [ HA.placeholder "Choose a name" ]
+            [ H.text "Please enter your name" ]
+        ]
+    ]
+
+
+viewLoading : List (Html FrontendMsg)
+viewLoading =
+    [ H.h1 [] [ H.text "Loading..." ]
+    ]
+
+
+viewWaitingRoom : WaitingRoomData -> List (Html FrontendMsg)
+viewWaitingRoom { name, cards, players } =
+    Debug.todo "waiting room"
