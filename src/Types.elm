@@ -11,17 +11,16 @@ import Url exposing (Url)
 
 
 type alias FrontendModel =
-    { url : Url.Url
-    , key : Nav.Key
-    , model : FrontendState
+    { key : Nav.Key
+    , page : Page
     }
 
 
-type FrontendState
-    = LoggingIn
+type Page
+    = Login
         { name : String
         }
-    | LoadingLogin
+    | GameLoading
         { name : String
         }
     | InWaitingRoom WaitingRoomData
@@ -44,7 +43,12 @@ type FrontendMsg
     = NoOpFrontendMsg
     | UrlClicked UrlRequest
     | UrlChanged Url
-    | LoginSubmitted
+    | LoginMsg LoginMsg
+
+
+type LoginMsg
+    = LoginSubmitted
+    | LoginNameChanged String
 
 
 type ToBackend

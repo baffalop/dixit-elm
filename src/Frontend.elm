@@ -2,7 +2,8 @@ module Frontend exposing (..)
 
 import Browser exposing (UrlRequest(..))
 import Browser.Navigation as Nav
-import Html as H exposing (Html)
+import Helpers exposing (withNoCmd)
+import Html exposing (Html)
 import Html.Attributes as HA
 import Html.Events as HE
 import Json.Decode as Decode
@@ -25,10 +26,9 @@ app =
 
 init : Url.Url -> Nav.Key -> ( FrontendModel, Cmd FrontendMsg )
 init url key =
-    ( { url = url
-      , key = key
-      , model =
-            LoggingIn
+    ( { key = key
+      , page =
+            Login
                 { name = ""
                 }
       }
@@ -37,22 +37,22 @@ init url key =
 
 
 update : FrontendMsg -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
-update msg ({ model } as everything) =
+update msg ({ page } as model) =
     let
         noOp =
-            ( model, Cmd.none )
+            ( page, Cmd.none )
     in
-    Tuple.mapFirst (FrontendModel everything.url everything.key) <|
+    Tuple.mapFirst (FrontendModel model.key) <|
         case msg of
             UrlClicked urlRequest ->
                 case urlRequest of
                     Internal url ->
-                        ( model
-                        , Cmd.batch [ Nav.pushUrl everything.key (Url.toString url) ]
+                        ( page
+                        , Cmd.batch [ Nav.pushUrl model.key (Url.toString url) ]
                         )
 
                     External url ->
-                        ( model
+                        ( page
                         , Nav.load url
                         )
 
@@ -62,15 +62,25 @@ update msg ({ model } as everything) =
             NoOpFrontendMsg ->
                 noOp
 
-            LoginSubmitted ->
-                case model of
-                    LoggingIn data ->
-                        ( LoadingLogin data
-                        , Cmd.none
-                        )
+            LoginMsg loginMsg ->
+                case page of
+                    Login data ->
+                        updateLogin loginMsg data
 
                     _ ->
                         noOp
+
+
+updateLogin : LoginMsg -> { name : String } -> ( Page, Cmd FrontendMsg )
+updateLogin msg ({ name } as model) =
+    case msg of
+        LoginNameChanged newName ->
+            Login { name = newName }
+                |> withNoCmd
+
+        LoginSubmitted ->
+            GameLoading model
+                |> withNoCmd
 
 
 updateFromBackend : ToFrontend -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
@@ -79,37 +89,42 @@ updateFromBackend msg model =
 
 
 view : FrontendModel -> Browser.Document FrontendMsg
-view { model } =
+view { page } =
     { title = "Dixit"
     , body =
-        case model of
-            LoggingIn { name } ->
-                viewLogin name
+        case page of
+            Login data ->
+                viewLogin data
 
-            LoadingLogin _ ->
-                viewLoading
+            GameLoading data ->
+                viewLoading data
 
             InWaitingRoom data ->
                 viewWaitingRoom data
     }
 
 
-viewLogin : String -> List (Html FrontendMsg)
-viewLogin name =
-    [ H.h1 [] [ H.text "Log In" ]
-    , H.form
+viewLogin : { name : String } -> List (Html FrontendMsg)
+viewLogin { name } =
+    [ Html.h1 [] [ Html.text "Log In" ]
+    , Html.form
         [ HE.preventDefaultOn "submit" <| Decode.succeed ( LoginSubmitted, True )
         ]
-        [ H.input
-            [ HA.placeholder "Choose a name" ]
-            [ H.text "Please enter your name" ]
+        [ Html.input
+            [ HA.placeholder "Choose a name"
+            , HA.required True
+            , HE.onInput LoginNameChanged
+            ]
+            [ Html.text "Please enter your name" ]
         ]
     ]
+        |> List.map (Html.map LoginMsg)
 
 
-viewLoading : List (Html FrontendMsg)
-viewLoading =
-    [ H.h1 [] [ H.text "Loading..." ]
+viewLoading : { name : String } -> List (Html FrontendMsg)
+viewLoading { name } =
+    [ Html.h1 [] [ Html.text "Loading..." ]
+    , Html.p [] [ Html.text name ]
     ]
 
 
