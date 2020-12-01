@@ -8,7 +8,7 @@ import Html.Styled as Html exposing (Html)
 import Html.Styled.Attributes as HA
 import Html.Styled.Events as HE
 import Json.Decode as Decode
-import Lamdera
+import Lamdera exposing (sendToBackend)
 import Types exposing (..)
 import Url
 
@@ -80,13 +80,45 @@ updateLogin msg ({ name } as model) =
                 |> withNoCmd
 
         LoginSubmitted ->
-            GameLoading model
-                |> withNoCmd
+            ( GameLoading model
+            , sendToBackend <| NewPlayerJoined name
+            )
 
 
 updateFromBackend : ToFrontend -> FrontendModel -> ( FrontendModel, Cmd FrontendMsg )
-updateFromBackend msg model =
-    ( model, Cmd.none )
+updateFromBackend msg { page, key } =
+    let
+        noOp =
+            page |> withNoCmd
+    in
+    Tuple.mapFirst (FrontendModel key) <|
+        case msg of
+            NoOpToFrontend ->
+                noOp
+
+            PlayerCouldNotJoin err ->
+                Login
+                    { name = getName page
+                    }
+                    |> withNoCmd
+
+            PlayerHasJoined name ->
+                case page of
+                    InWaitingRoom data ->
+                        if data.name == name then
+                            noOp
+
+                        else
+                            InWaitingRoom { data | players = name :: data.players }
+                                |> withNoCmd
+
+                    _ ->
+                        InWaitingRoom
+                            { name = getName page
+                            , cards = []
+                            , players = []
+                            }
+                            |> withNoCmd
 
 
 view : FrontendModel -> Browser.Document FrontendMsg
@@ -146,4 +178,20 @@ viewLoading { name } =
 
 viewWaitingRoom : WaitingRoomData -> List (Html FrontendMsg)
 viewWaitingRoom { name, cards, players } =
-    Debug.todo "waiting room"
+    [ Html.h1 [] [ Html.text <| "Welcome, " ++ name ]
+    , Html.p [] [ Html.text "Other players with you here are:" ]
+    , Html.ul [] <| List.map (Html.text >> List.singleton >> Html.li []) players
+    ]
+
+
+getName : Page -> String
+getName page =
+    case page of
+        Login { name } ->
+            name
+
+        GameLoading { name } ->
+            name
+
+        InWaitingRoom { name } ->
+            name
